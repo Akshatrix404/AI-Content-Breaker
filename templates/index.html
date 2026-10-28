@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Content Breaker — An Attribute Grammar Based Framework for AI-Generated Text Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>AI Content Breaker</h1>
+  <p class="tagline">An attribute grammar based framework for AI-generated text detection — every token tokenized, tagged, and analyzed by hand-written grammar rules, no AI involved anywhere in the analysis itself.</p>
+  <nav class="mode-tabs" id="modeTabs">
+    <button class="mode-tab active" data-mode="single">Analyze text</button>
+    <button class="mode-tab" data-mode="compare">Compare two texts</button>
+    <button class="mode-tab" data-mode="batch">Batch / paragraphs</button>
+    <button class="mode-tab" data-mode="history">History</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ============ SINGLE MODE ============ -->
+  <section class="mode-panel" id="mode-single">
+
+    <section class="sheet">
+      <div class="sheet-head">
+        <h2>Give it some text</h2>
+        <div class="sample-buttons">
+          <label class="btn ghost small file-btn">Upload .txt
+            <input type="file" id="fileInput" accept=".txt,.md" hidden>
+          </label>
+          <button class="btn ghost small" id="loadHuman">Human-ish sample</button>
+          <button class="btn ghost small" id="loadAI">AI-ish sample</button>
+          <button class="btn ghost small" id="clearBtn">Clear</button>
+        </div>
+      </div>
+      <textarea id="sourceText" class="manuscript" placeholder="Paste the text you want broken down, token by token…" spellcheck="false"></textarea>
+      <div class="input-footer">
+        <span id="charCount" class="faint mono">0 characters</span>
+        <button class="btn primary" id="analyzeBtn">
+          <span class="btn-label">Break it down</span>
+          <span class="btn-spinner" hidden></span>
+        </button>
+      </div>
+      <p class="error-msg" id="errorMsg" hidden></p>
+    </section>
+
+    <section class="sheet" id="consolePanel" hidden>
+      <div class="sheet-head"><h2>Compiler ledger</h2><span class="faint mono" id="totalTime"></span></div>
+      <ol class="ledger" id="ledgerList" style="list-style:none;"></ol>
+    </section>
+
+    <section id="results" hidden>
+
+      <div class="section" id="jarSimSection">
+        <div class="section-head">
+          <h2>Token sort simulation</h2>
+          <span class="section-note">Breaking the text into tokens, then sorting each one into its jar
+            <button class="btn ghost small" id="replayJarBtn" type="button">▶ Replay</button></span>
+        </div>
+        <div class="jar-stream" id="jarStream"></div>
+        <div class="jar-row">
+          <div class="jar jar-human">
+            <div class="jar-label">HUMANISED</div>
+            <div class="jar-body" id="jarHumanBody"></div>
+            <div class="jar-count"><span class="mono" id="jarHumanCount">0</span> tokens</div>
+          </div>
+          <div class="jar jar-ai">
+            <div class="jar-label">AI GENERATED</div>
+            <div class="jar-body" id="jarAIBody"></div>
+            <div class="jar-count"><span class="mono" id="jarAICount">0</span> tokens</div>
+          </div>
+        </div>
+        <p class="jar-formula-note" id="jarFormulaNote"></p>
+      </div>
+
+      <div class="section" id="formulaSimSection">
+        <div class="section-head">
+          <h2>Formula simulation — building the final score</h2>
+          <span class="section-note">Each feature's score × weight computed live, running total added as it goes
+            <button class="btn ghost small" id="replayFormulaBtn" type="button">▶ Replay</button></span>
+        </div>
+        <div class="formula-steps" id="formulaSteps"></div>
+        <div class="formula-total" id="formulaTotal"></div>
+      </div>
+
+      <div class="section" id="verdictSection">
+        <div class="verdict-block">
+          <span class="stamp" id="verdictStamp">—</span>
+          <div>
+            <span class="verdict-score" id="verdictScore">0%</span>
+          </div>
+          <div class="verdict-meta">
+            <div id="verdictStats"></div>
+            <p class="vm-explain">Score is a plain weighted sum of twelve measured features below — nothing is inferred by a model. Every point is accounted for in the receipt further down.</p>
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="btn stamp-btn" id="humanizeBtn">Rewrite in a human voice →</button>
+          <button class="btn ghost small" id="exportJsonBtn">Export full report (JSON)</button>
+          <button class="btn ghost small" id="printBtn">Print / save PDF</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>Every token, analyzed</h2>
+          <span class="section-note">Click any word for its full analysis record</span>
+        </div>
+        <div class="gloss-legend">
+          <span class="gl-item"><i class="gl-mark" style="border-color:var(--red)"></i>discourse connective</span>
+          <span class="gl-item"><i class="gl-mark" style="border-color:var(--amber)"></i>hedge word</span>
+          <span class="gl-item"><i class="gl-mark" style="border-color:var(--green)"></i>contraction</span>
+          <span class="gl-item"><i class="gl-mark" style="border-bottom-style:dotted;border-color:var(--navy)"></i>appears once in doc</span>
+        </div>
+        <div class="annotated-doc" id="annotatedDoc"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>The score, itemized</h2>
+          <span class="section-note">Every feature, its weight, and exactly how much it added</span>
+        </div>
+        <div class="receipt" id="receipt"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>What the semantic pass flagged</h2>
+          <span class="section-note">Compiler-warning style diagnostics</span>
+        </div>
+        <ul class="diag-list" id="diagList"></ul>
+      </div>
+
+      <div class="section" id="compilerInternalsSection">
+        <div class="section-head">
+          <h2>Compiler-theory internals</h2>
+          <span class="section-note">A second parsing algorithm, an IR with real optimizer passes, data-flow analysis, and a control-flow graph — all independently verified, not just tokenize/parse/score</span>
+        </div>
+
+        <h3 class="ci-subhead">1 · Formal grammar verification — LL(1) table-driven parser</h3>
+        <p class="ci-explain">The grammar parser.py uses (recursive descent) is formalized here as pure BNF, FIRST/FOLLOW sets are computed by the textbook fixed-point algorithm, an LL(1) parsing table is built from them, and a second, independent <em>stack-based</em> parser drives that table across the same sentences — used to cross-check the hand-written parser rather than trust a single implementation.</p>
+        <div class="ci-stat-row" id="ll1Stats"></div>
+        <div id="ll1Conflicts"></div>
+        <div class="ll1-table-wrap" id="ll1SentenceTable"></div>
+
+        <h3 class="ci-subhead">2 · Intermediate representation — triples + optimizer passes</h3>
+        <p class="ci-explain">Each sentence's parse tree is lowered into (subject, verb, object) and modifier triples, the same way a compiler lowers syntax trees to three-address code. Two classical optimizer passes then run over the whole document's IR stream: <strong>common subexpression elimination</strong> (an identical proposition seen twice) and <strong>dead-code elimination</strong> (a generic filler modifier with no discriminative content).</p>
+        <div class="ci-stat-row" id="irStats"></div>
+        <div class="ir-listing" id="irListing"></div>
+
+        <h3 class="ci-subhead">3 · Data-flow analysis — reaching definitions</h3>
+        <p class="ci-explain">A noun's first mention is a <strong>definition</strong>; a later pronoun is a <strong>use</strong>. The classic reaching-definitions worklist algorithm (GEN / KILL / IN / OUT, iterated to a fixed point) propagates definitions across sentences; a pronoun with no reaching definition is flagged the same way a compiler flags a use of an undefined variable.</p>
+        <div class="ci-stat-row" id="dfStats"></div>
+        <div class="df-table-wrap" id="dfTable"></div>
+        <div class="df-unresolved" id="dfUnresolved"></div>
+
+        <h3 class="ci-subhead">4 · Discourse control-flow graph — cyclomatic complexity</h3>
+        <p class="ci-explain">Sentences are nodes; a mandatory sequential edge links each sentence to the next, and an extra "cohesion" edge is added whenever a later sentence reuses an entity from a non-adjacent earlier one (a long-range back-reference — structurally the same thing as a loop-back edge). McCabe's cyclomatic complexity <span class="mono">M = E − N + 2P</span> is computed over the resulting graph exactly as a static-analysis tool computes it for a function body.</p>
+        <div class="ci-stat-row" id="cfgStats"></div>
+        <div class="cfg-edge-list" id="cfgEdgeList"></div>
+      </div>
+
+      <div class="section" id="humanizeSection" hidden>
+        <div class="section-head">
+          <h2>Humanized rewrite</h2>
+          <span class="section-note">Rule-based rewrite passes only — no AI model wrote this</span>
+        </div>
+        <div class="humanize-scores">
+          <div class="hs-card">
+            <span class="hs-label">Before</span>
+            <span class="hs-value" id="humBefore">—</span>
+            <span class="hs-verdict" id="humBeforeVerdict">—</span>
+          </div>
+          <span class="hs-arrow">→</span>
+          <div class="hs-card">
+            <span class="hs-label">After</span>
+            <span class="hs-value" id="humAfter">—</span>
+            <span class="hs-verdict" id="humAfterVerdict">—</span>
+          </div>
+          <span class="hs-delta" id="humDelta">—</span>
+        </div>
+        <div class="section-note" style="text-align:left;margin-bottom:8px">Tracked changes — <span class="tc-removed">removed</span> / <span class="tc-added">added</span></div>
+        <div class="track-changes" id="trackChanges"></div>
+        <div class="section-note" style="text-align:left;margin-bottom:8px">Transformation log — every edit and the rule that made it</div>
+        <div class="edit-log" id="editLog"></div>
+      </div>
+
+      <details class="deep-dive section">
+        <summary>Deep dive: symbol table, linguistic metrics, full parse trees</summary>
+        <div class="deep-dive-body">
+          <h3 style="font-family:var(--font-display);font-size:15px;margin:0 0 10px">Symbol table</h3>
+          <div class="symtab-grid" id="symtabGrid"></div>
+
+          <h3 style="font-family:var(--font-display);font-size:15px;margin:24px 0 10px">Linguistic metrics <span class="faint" style="font-size:11px;font-family:var(--font-body)">(informational — not scored)</span></h3>
+          <div class="metrics-grid" id="metricsGrid"></div>
+
+          <h3 style="font-family:var(--font-display);font-size:15px;margin:24px 0 10px">Full parse trees, per sentence</h3>
+          <div id="sentenceTrees"></div>
+        </div>
+      </details>
+
+    </section>
+  </section>
+
+  <!-- ============ COMPARE MODE ============ -->
+  <section class="mode-panel" id="mode-compare" hidden>
+    <section class="sheet">
+      <div class="sheet-head"><h2>Compare two texts</h2></div>
+      <div class="compare-grid">
+        <div>
+          <label class="faint mono" style="font-size:11px">TEXT A</label>
+          <textarea id="compareA" class="compare-textarea" spellcheck="false" placeholder="Paste text A…"></textarea>
+        </div>
+        <div>
+          <label class="faint mono" style="font-size:11px">TEXT B</label>
+          <textarea id="compareB" class="compare-textarea" spellcheck="false" placeholder="Paste text B…"></textarea>
+        </div>
+      </div>
+      <div class="input-footer">
+        <span></span>
+        <button class="btn primary" id="compareBtn">
+          <span class="btn-label">Compare</span>
+          <span class="btn-spinner" hidden></span>
+        </button>
+      </div>
+      <p class="error-msg" id="compareError" hidden></p>
+    </section>
+    <section class="sheet" id="compareResults" hidden>
+      <div id="compareSummary" class="compare-summary"></div>
+      <div class="compare-grid" id="compareCards"></div>
+    </section>
+  </section>
+
+  <!-- ============ BATCH MODE ============ -->
+  <section class="mode-panel" id="mode-batch" hidden>
+    <section class="sheet">
+      <div class="sheet-head"><h2>Batch / paragraph mode</h2></div>
+      <p class="muted" style="margin-top:0">Splits on blank lines and scores each paragraph on its own — useful for finding one AI-written paragraph hiding inside a human-written document.</p>
+      <textarea id="batchText" class="compare-textarea" style="min-height:220px" spellcheck="false" placeholder="Paste a multi-paragraph document — separate paragraphs with a blank line…"></textarea>
+      <div class="input-footer">
+        <span></span>
+        <button class="btn primary" id="batchBtn">
+          <span class="btn-label">Analyze all paragraphs</span>
+          <span class="btn-spinner" hidden></span>
+        </button>
+      </div>
+      <p class="error-msg" id="batchError" hidden></p>
+    </section>
+    <section class="sheet" id="batchResults" hidden>
+      <div class="sheet-head"><h2>Per-paragraph report</h2><span class="faint mono" id="batchOverall"></span></div>
+      <div id="batchTable" class="batch-table"></div>
+    </section>
+  </section>
+
+  <!-- ============ HISTORY MODE ============ -->
+  <section class="mode-panel" id="mode-history" hidden>
+    <section class="sheet">
+      <div class="sheet-head"><h2>Recent analyses</h2><span class="faint" style="font-size:11px">stored in your browser only</span></div>
+      <div id="historyList" class="history-list"></div>
+      <button class="btn ghost small" id="clearHistoryBtn" style="margin-top:14px">Clear history</button>
+    </section>
+  </section>
+
+  <p class="footer-note">Every phase is deterministic and rule-based: a hand-written lexer and grammar, a recursive-descent parser, an attribute-grammar evaluator, and a fixed set of weighted formulas — no language model is used to detect or to judge. Humanizing is two-stage: fixed, named, logged rewrite rules first, then a local Ollama model (with RAG-retrieved human writing as style examples) proposes paraphrases that this same rule-based scorer accepts or rejects. No external API; the LLM never judges, the compiler-style scorer is the verifier.</p>
+</main>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script>
+// debug/demo helper: ?autorun=<urlencoded text> triggers an automatic analysis on load
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const auto = params.get('autorun');
+  if (auto) {
+    window.addEventListener('load', () => {
+      document.getElementById('sourceText').value = decodeURIComponent(auto);
+      document.getElementById('sourceText').dispatchEvent(new Event('input'));
+      document.getElementById('analyzeBtn').click();
+      if (params.get('humanize')) {
+        setTimeout(() => document.getElementById('humanizeBtn').click(), 2500);
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

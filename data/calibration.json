@@ -1,0 +1,23 @@
+{
+ "human_median": {
+  "transition_density": 0.426,
+  "unresolved_reference_ratio": 1.0,
+  "burstiness": 0.33,
+  "pos_bigram_predictability": 0.225,
+  "punctuation_diversity": 0.333,
+  "ll1_rejection_rate": 0.5,
+  "depth_uniformity": 0.443,
+  "structural_repetition": 0.341,
+  "clause_complexity_uniformity": 0.333,
+  "discourse_cyclomatic_density": 0.417,
+  "lexical_uniformity": 0.169,
+  "opener_repetition": 0.0,
+  "sentence_similarity_repetition": 0.0,
+  "contraction_scarcity": 0.0,
+  "compression_predictability": 0.0,
+  "ir_redundancy_ratio": 0.0,
+  "ir_dead_modifier_ratio": 0.0
+ },
+ "n_passages": 525,
+ "uncalibrated_human_mean_pct": 29.4
+}
